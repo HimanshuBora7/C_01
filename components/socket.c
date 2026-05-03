@@ -24,8 +24,6 @@ int main(){
     }
     printf("%d",fd);
     //listen part
-
-    
    if (listen(fd, 5) == -1) {
     perror("listen failed");
     return 1;
