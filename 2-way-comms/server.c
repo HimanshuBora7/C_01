@@ -3,6 +3,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <sys/select.h>
+
 int main(){
     
     //making endpoint or socket
@@ -39,22 +41,38 @@ if (client_fd == -1) {
 }
 
 char buffer[100];
+fd_set readfds;
+
 while(1)
 {
-    int n = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-    if (n <= 0) {
-            printf("client disconnected\n");
+    FD_ZERO(&readfds);
+    FD_SET(0,&readfds);
+    FD_SET(client_fd, &readfds);
+
+    int maxfd= client_fd;
+     if (select(maxfd + 1, &readfds, NULL, NULL, NULL) == -1) {
+        perror("select failed");
+        break;
+    }
+     if (FD_ISSET(client_fd, &readfds)) {
+        int n = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+
+        if (n <= 0) {
+            printf("Client disconnected\n");
             break;
         }
 
         buffer[n] = '\0';
-        printf("client: %s", buffer);
+        printf("Client: %s", buffer);
+    }
+    if (FD_ISSET(0, &readfds)) {
+        printf("You: ");
+        fflush(stdout);
 
-    printf("You: ");
         if (fgets(buffer, sizeof(buffer), stdin) == NULL)
             break;
 
-        if (strncmp(buffer, "exit", 4) == 0)
+        if (strncmp(buffer, "exit\n", 5) == 0)
             break;
 
         if (send(client_fd, buffer, strlen(buffer), 0) == -1) {
@@ -62,7 +80,8 @@ while(1)
             break;
         }
     }
-    close(client_fd);
+}
+close(client_fd);
 close(fd);
-    return 0;
+return 0;
 }
